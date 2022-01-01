@@ -3,8 +3,11 @@
 import random
 
 import numpy as np
+import cv2
 import torch
 from torch import nn
+
+from visualizer.visualizer import *
 
 
 class DataFormatter:
@@ -248,4 +251,7 @@ if __name__ == '__main__':
     model = Model(text)
     model.rnn_train()
     model.sample(15, 'good')
+    viz = Visualizer.draw(model.state_dict(), 3)
+    while cv2.waitKey(10) != ord('q'):
+        cv2.imshow('NN', viz)
     pass
