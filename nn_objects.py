@@ -17,14 +17,40 @@ class Neuron:
         self.neuron_num = neuron_num
         self.col = self.layer.col
         self.row = 0
+        self.on = False
+        self.clicked = False
 
     def draw(self, win):
-        pygame.draw.line(win, ORANGE, (self.col - 10, self.row), (self.col + 10, self.row))
+        if self.on:
+            pygame.draw.line(win, ORANGE, (self.col - 10, self.row), (self.col + 10, self.row), width=3)
+        else:
+            pygame.draw.line(win, ORANGE, (self.col - 10, self.row), (self.col + 10, self.row))
+
+    def mouse_on_neuron(self, col, row):
+        return (self.col - 15 <= col) and (col <= self.col + 15) and (self.row - 5 <= row) and (row <= self.row + 5)
+
+    def turn_on(self):
+        self.on = True
+        self.clicked = True
+
+    def turn_off(self):
+        self.on = False
+        self.clicked = False
 
 
 class Neurons:
-    def __init__(self):
+    def __init__(self, win):
+        self.win = win
         self.neurons = list()
+
+    def add_neuron(self, layer):
+        layer.add_neuron()
+        new_neuron = layer.neurons[-1]
+        self.neurons.append(new_neuron)
+
+    def draw(self):
+        for neuron in self.neurons:
+            neuron.draw(self.win)
 
 
 class Layer:
@@ -45,12 +71,12 @@ class Layer:
     def draw(self, win):
         if self.on:
             pygame.draw.line(
-                win, PURPLE, (self.col, self.top_offset), (self.col, self.top_offset + self.height), width=5
+                win, PURPLE, (self.col, self.top_offset), (self.col, self.top_offset + self.height), width=3
             )
         else:
             pygame.draw.line(win, PURPLE, (self.col, self.top_offset), (self.col, self.top_offset + self.height))
-        for neuron in self.neurons:
-            neuron.draw(win)
+        # for neuron in self.neurons:
+        #     neuron.draw(win)
 
     def add_neuron(self):
         print('new neuron')
@@ -69,23 +95,38 @@ class Layer:
 
     def mouse_on_layer(self, mouse_col, mouse_row):
         if (self.col - self.neighbourhood <= mouse_col) and (mouse_col <= self.col + self.neighbourhood) and \
-                (self.top_offset <= mouse_row) and (mouse_row <= self.top_offset + self.height):
+                (self.top_offset <= mouse_row) and (mouse_row <= self.top_offset + self.height) and not any(
+            [neuron.mouse_on_neuron(mouse_col, mouse_row) for neuron in self.neurons]
+        ):
             return True
         return False
 
+    def turn_on(self):
+        self.on = True
+        self.clicked = True
+
+    def turn_off(self):
+        self.on = False
+        self.clicked = False
+
+    def turn_off_neurons(self):
+        for neuron in self.neurons:
+            neuron.turn_off()
+
 
 class Layers:
-    def __init__(self, width, height, top_offset, left_offset):
+    def __init__(self, win, width, height, top_offset, left_offset):
         self.layers = list()
+        self.win = win
         self.width = width
         self.height = height
         self.top_offset = top_offset
         self.left_offset = left_offset
         self.create_in_out_layer()
 
-    def draw(self, win):
+    def draw(self):
         for layer in self.layers:
-            layer.draw(win)
+            layer.draw(self.win)
 
     def add_layer(self):
         layer_num = len(self.layers[0:-1]) + 1

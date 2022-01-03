@@ -1,6 +1,6 @@
 import pygame
 
-from nn_objects import Layers, Buttons
+from nn_objects import Layers, Buttons, Neurons
 
 BLACK = (31, 29, 36)
 BLUE = (36, 64, 120)
@@ -25,7 +25,8 @@ class NNVizBuild:
         self.inner_win = (self.inner_width, self.inner_height)
         self.run = True
 
-        self.layers = Layers(self.inner_width, self.inner_height, self.top_offset, self.left_offset)
+        self.layers = Layers(self.win, self.inner_width, self.inner_height, self.top_offset, self.left_offset)
+        self.neurons = Neurons(self.win)
         self.buttons = Buttons(
             self.win, (self.left_offset + self.inner_width + 10, self.top_offset), (140, self.inner_height)
         )
@@ -34,6 +35,7 @@ class NNVizBuild:
         self.to_build_layer = False
         self.num_layers = 2
         self.reset_counter = 0
+        self.clicked_neuron = list()
         self.clicked_layer = list()
         # self.build_connection = False
         # self.selected_neurons =
@@ -79,9 +81,9 @@ class NNVizBuild:
             self.reset_counter = 100
         elif event.key == pygame.K_c and self.to_build_neuron:
             print('build new neuron')
-            layer = self.layers.layers[0]
-            layer.add_neuron()
-            self.reset_counter = 100
+            if layer := self.get_clicked_layer():
+                self.neurons.add_neuron(layer[0])
+                self.reset_counter = 100
 
     def mouse_actions(self, event, mouse_pressed):
         if mouse_pressed[2]:
@@ -89,22 +91,25 @@ class NNVizBuild:
             self.reset_parameters()
 
         col, row = pygame.mouse.get_pos()
+        self.click_neuron(col, row)
         self.click_layer(col, row)
         if self.to_build_neuron and mouse_pressed[0]:
             self.to_build_neuron = False
 
     def mouse_movements(self):
         col, row = pygame.mouse.get_pos()
-        self.highlight_layer(col, row)
+        on_neuron = self.highlight_neuron(col, row)
+        self.highlight_layer(col, row, on_neuron=on_neuron)
 
     def draw_board(self):
         self.draw_border()
         self.draw_background()
         self.draw_buttons()
         self.draw_layers()
+        self.draw_neurons()
 
     def draw_layers(self):
-        self.layers.draw(self.win)
+        self.layers.draw()
 
     def draw_background(self):
         self.win.fill(BLACK)
@@ -117,7 +122,7 @@ class NNVizBuild:
         self.buttons.draw()
 
     def draw_neurons(self):
-        pass
+        self.neurons.draw()
 
     def build_neuron(self):
         pass
@@ -126,21 +131,45 @@ class NNVizBuild:
         pass
 
     # ---------------------------------------- MISC functions ---------------------------------------------------------
+    def click_neuron(self, col, row):
+        closest_neuron = list(filter(lambda _neuron: _neuron.mouse_on_neuron(col, row), self.neurons.neurons))
+        if not closest_neuron:
+            return
+        for neuron in filter(lambda _neuron: _neuron != closest_neuron[0], self.clicked_neuron):
+            neuron.turn_off()
+
+        closest_neuron[0].turn_on()
+        self.clicked_neuron.append(closest_neuron[0])
+
     def click_layer(self, col, row):
         closest_layer = list(filter(lambda _layer: _layer.mouse_on_layer(col, row), self.layers.layers))
         if not closest_layer:
             return
-        closest_layer[0].on = True
-        closest_layer[0].clicked = True
+        for layer in filter(lambda _layer: _layer != closest_layer[0], self.clicked_layer):
+            layer.turn_off()
+            self.clicked_layer.remove(layer)
+        closest_layer[0].turn_on()
+        self.clicked_layer.append(closest_layer[0])
 
-    def highlight_layer(self, col, row):
+    def highlight_neuron(self, col, row):
+        closest_neuron = list(filter(lambda _neuron: _neuron.mouse_on_neuron(col, row), self.neurons.neurons))
+        if closest_neuron:
+            closest_neuron[0].on = True
+            return True
+        else:
+            for neuron in filter(lambda _neuron: _neuron.on and not _neuron.clicked, self.neurons.neurons):
+                neuron.on = False
+                self.reset_counter = 100
+            return False
+
+    def highlight_layer(self, col, row, on_neuron=False):
         closest_layer = list(filter(lambda _layer: _layer.mouse_on_layer(col, row), self.layers.layers))
-        if closest_layer:
+        if closest_layer and not on_neuron:
             closest_layer[0].on = True
         else:
             for layer in filter(lambda _layer: _layer.on and not _layer.clicked, self.layers.layers):
                 self.reset_counter = 100
-                layer.on = False
+                layer.turn_off()
 
     def build_param_on_off(self, param):
         if param == 'neuron':
@@ -152,8 +181,8 @@ class NNVizBuild:
         self.to_build_neuron = False
         self.to_build_layer = False
         for layer in self.layers.layers:
-            layer.on = False
-            layer.clicked = False
+            layer.turn_off()
+            layer.turn_off_neurons()
         # for neuron in self.neurons:
         #     neuron.on = False
 
