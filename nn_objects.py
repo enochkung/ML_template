@@ -2,6 +2,7 @@ import pygame
 
 BLACK = (31, 29, 36)
 BLUE = (36, 64, 120)
+RED = (204, 0, 68)
 ORANGE = (255, 165, 0)
 PURPLE = (177, 156, 217)
 DARK_GREY = (50, 50, 50)
@@ -83,25 +84,25 @@ class Layer:
             )
         else:
             pygame.draw.line(win, PURPLE, (self.col, self.top_offset), (self.col, self.top_offset + self.height))
-        # for neuron in self.neurons:
-        #     neuron.draw(win)
 
     def add_neuron(self):
         print('new neuron')
         self.neurons.append(Neuron(self, len(self.neurons)))
-        self.update_neuron_row()
+        self.update_neuron()
 
-    def update_neuron_row(self):
+    def update_neuron(self):
         if not self.neurons:
             return
         elif len(self.neurons) == 1:
             self.neurons[0].row = self.top_offset + (self.ending_row + self.starting_row) / 2
             self.neurons[0].radius = 40
+            self.neurons[0].col = self.col
         else:
             increment = (self.ending_row - self.starting_row) / (len(self.neurons) + 1)
             for neuron_index, neuron in enumerate(self.neurons):
                 neuron.row = self.top_offset + self.starting_row + (neuron_index + 1) * increment
                 neuron.radius = min(40, increment * 0.90 / 2)
+                neuron.col = self.col
 
     def mouse_on_layer(self, mouse_col, mouse_row):
         if (self.col - self.neighbourhood <= mouse_col) and (mouse_col <= self.col + self.neighbourhood) and \
@@ -151,7 +152,7 @@ class Layers:
         for layer_index, layer in enumerate(self.layers):
             layer.layer_num = layer_index + 1
             layer.col = self.left_offset + layer.layer_num * col
-            layer.update_neuron_row()
+            layer.update_neuron()
 
     def create_in_out_layer(self):
         self.layers = [Layer(self.width, self.height, 1, self.top_offset, self.left_offset),
@@ -233,3 +234,37 @@ class Buttons:
     def draw(self):
         for button_index, button in enumerate(self.buttons):
             button.draw(self.win)
+
+
+class Connection:
+    def __init__(self, neuron_1, neuron_2, activation='sigmoid'):
+        """
+        :param neuron_1:
+        :param neuron_2:
+        :param activation: sigmoid, tanh, relu, leaky_relu, maxout, elu
+        """
+        self.neuron_1 = neuron_1
+        self.neuron_2 = neuron_2
+        self.weight = 0
+        self.activation = activation
+        self.on = False
+        self.clicked = False
+
+    def draw(self, win):
+        pygame.draw.line(
+            win, color=RED, start_pos=(self.neuron_1.col, self.neuron_1.row),
+            end_pos=(self.neuron_2.col, self.neuron_2.row), width=2)
+
+
+class Connections:
+    def __init__(self, win):
+        self.connections = list()
+        self.win = win
+
+    def draw(self):
+        for connection in self.connections:
+            connection.draw(self.win)
+
+    def add_connections(self, neuron_1, neuron_2):
+        self.connections.append(Connection(neuron_1, neuron_2))
+

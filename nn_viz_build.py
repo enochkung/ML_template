@@ -1,6 +1,6 @@
 import pygame
 
-from nn_objects import Layers, Buttons, Neurons
+from nn_objects import Layers, Buttons, Neurons, Connections
 
 BLACK = (31, 29, 36)
 BLUE = (36, 64, 120)
@@ -30,6 +30,7 @@ class NNVizBuild:
         self.buttons = Buttons(
             self.win, (self.left_offset + self.inner_width + 10, self.top_offset), (140, self.inner_height)
         )
+        self.connections = Connections(self.win)
 
         self.to_build_neuron = False
         self.to_build_layer = False
@@ -63,45 +64,25 @@ class NNVizBuild:
                         self.key_actions(event)
                     elif event.type == pygame.MOUSEBUTTONDOWN:
                         left, mid, right = pygame.mouse.get_pressed()
-                        self.mouse_actions(event, (left, mid, right))
+                        self.mouse_actions((left, mid, right))
             pygame.display.update()
 
     def key_actions(self, event):
         if event.key == pygame.K_q:
             self.run = False
             return
-
-        if event.key == pygame.K_n:
-            self.build_param_on_off('neuron')
-        elif event.key == pygame.K_l:
-            self.build_param_on_off('layer')
-        elif event.key == pygame.K_c and self.to_build_layer:
-            print('build new layer')
-            self.layers.add_layer()
-            self.reset_counter = 100
-        elif event.key == pygame.K_c and self.to_build_neuron:
-            print('build new neuron')
+        if event.key == pygame.K_n and self.clicked_layer:
             if layer := self.get_clicked_layer():
                 self.neurons.add_neuron(layer[0])
                 self.reset_counter = 100
+        elif event.key == pygame.K_l and self.clicked_layer:
+            self.layers.add_layer()
+            self.reset_counter = 100
         elif event.key == pygame.K_DELETE and (self.clicked_neuron or self.clicked_layer):
-            for neuron in self.clicked_neuron:
-                self.neurons.neurons.remove(neuron)
-                neuron.layer.neurons.remove(neuron)
-                neuron.layer.update_neuron_row()
-            self.clicked_neuron = list()
+            self.delete_neurons()
+            self.delete_layers()
 
-            for layer in filter(
-                    lambda _layer: (_layer.layer_num != 1) and ( _layer.layer_num != len(self.layers.layers)),
-                    self.clicked_layer):
-                self.layers.layers.remove(layer)
-                for neuron in layer.neurons:
-                    self.neurons.neurons.remove(neuron)
-                    neuron.layer.update_neuron_row()
-            self.layers.update_layer_col()
-            self.clicked_layer = list()
-
-    def mouse_actions(self, event, mouse_pressed):
+    def mouse_actions(self, mouse_pressed):
         if mouse_pressed[2]:
             print('all reset')
             self.reset_parameters()
@@ -122,6 +103,7 @@ class NNVizBuild:
         self.draw_background()
         self.draw_buttons()
         self.draw_layers()
+        self.draw_connections()
         self.draw_neurons()
 
     def draw_layers(self):
@@ -140,6 +122,9 @@ class NNVizBuild:
     def draw_neurons(self):
         self.neurons.draw()
 
+    def draw_connections(self):
+        self.connections.draw()
+
     def build_neuron(self):
         pass
 
@@ -147,11 +132,30 @@ class NNVizBuild:
         pass
 
     # ---------------------------------------- MISC functions ---------------------------------------------------------
+    def delete_neurons(self):
+        for neuron in self.clicked_neuron:
+            self.neurons.neurons.remove(neuron)
+            neuron.layer.neurons.remove(neuron)
+            neuron.layer.update_neuron_row()
+        self.clicked_neuron = list()
+
+    def delete_layers(self):
+        for layer in filter(
+                lambda _layer: (_layer.layer_num != 1) and (_layer.layer_num != len(self.layers.layers)),
+                self.clicked_layer):
+            self.layers.layers.remove(layer)
+            for neuron in layer.neurons:
+                self.neurons.neurons.remove(neuron)
+                neuron.layer.update_neuron_row()
+        self.layers.update_layer_col()
+        self.clicked_layer = list()
+
     def click_neuron(self, col, row):
         closest_neuron = list(filter(lambda _neuron: _neuron.mouse_on_neuron(col, row), self.neurons.neurons))
         if not closest_neuron:
             return
         for neuron in filter(lambda _neuron: _neuron != closest_neuron[0], self.clicked_neuron):
+            self.connections.add_connections(neuron, closest_neuron[0])
             neuron.turn_off()
         for layer in self.clicked_layer:
             layer.turn_off()
