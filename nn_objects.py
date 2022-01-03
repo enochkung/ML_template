@@ -19,15 +19,23 @@ class Neuron:
         self.row = 0
         self.on = False
         self.clicked = False
+        self.radius = 40
 
     def draw(self, win):
         if self.on:
-            pygame.draw.line(win, ORANGE, (self.col - 10, self.row), (self.col + 10, self.row), width=3)
+            pygame.draw.circle(win, ORANGE, center=(self.col, self.row), radius=self.radius)
         else:
-            pygame.draw.line(win, ORANGE, (self.col - 10, self.row), (self.col + 10, self.row))
+            pygame.draw.circle(win, BLUE, center=(self.col, self.row), radius=self.radius)
+            pygame.draw.circle(win, ORANGE, center=(self.col, self.row), radius=self.radius, width=3)
+
+        # if self.on:
+        #     pygame.draw.line(win, ORANGE, (self.col - 10, self.row), (self.col + 10, self.row), width=3)
+        # else:
+        #     pygame.draw.line(win, ORANGE, (self.col - 10, self.row), (self.col + 10, self.row))
 
     def mouse_on_neuron(self, col, row):
-        return (self.col - 15 <= col) and (col <= self.col + 15) and (self.row - 5 <= row) and (row <= self.row + 5)
+        return (col - self.col) ** 2 + (row - self.row) ** 2 <= self.radius ** 2
+        # return (self.col - 15 <= col) and (col <= self.col + 15) and (self.row - 5 <= row) and (row <= self.row + 5)
 
     def turn_on(self):
         self.on = True
@@ -88,10 +96,12 @@ class Layer:
             return
         elif len(self.neurons) == 1:
             self.neurons[0].row = self.top_offset + (self.ending_row + self.starting_row) / 2
+            self.neurons[0].radius = 40
         else:
             increment = (self.ending_row - self.starting_row) / (len(self.neurons) + 1)
             for neuron_index, neuron in enumerate(self.neurons):
                 neuron.row = self.top_offset + self.starting_row + (neuron_index + 1) * increment
+                neuron.radius = min(40, increment * 0.90 / 2)
 
     def mouse_on_layer(self, mouse_col, mouse_row):
         if (self.col - self.neighbourhood <= mouse_col) and (mouse_col <= self.col + self.neighbourhood) and \
@@ -138,8 +148,10 @@ class Layers:
     def update_layer_col(self):
         num_of_layers = len(self.layers)
         col = self.width / (num_of_layers + 1)
-        for layer in self.layers:
+        for layer_index, layer in enumerate(self.layers):
+            layer.layer_num = layer_index + 1
             layer.col = self.left_offset + layer.layer_num * col
+            layer.update_neuron_row()
 
     def create_in_out_layer(self):
         self.layers = [Layer(self.width, self.height, 1, self.top_offset, self.left_offset),

@@ -84,6 +84,22 @@ class NNVizBuild:
             if layer := self.get_clicked_layer():
                 self.neurons.add_neuron(layer[0])
                 self.reset_counter = 100
+        elif event.key == pygame.K_DELETE and (self.clicked_neuron or self.clicked_layer):
+            for neuron in self.clicked_neuron:
+                self.neurons.neurons.remove(neuron)
+                neuron.layer.neurons.remove(neuron)
+                neuron.layer.update_neuron_row()
+            self.clicked_neuron = list()
+
+            for layer in filter(
+                    lambda _layer: (_layer.layer_num != 1) and ( _layer.layer_num != len(self.layers.layers)),
+                    self.clicked_layer):
+                self.layers.layers.remove(layer)
+                for neuron in layer.neurons:
+                    self.neurons.neurons.remove(neuron)
+                    neuron.layer.update_neuron_row()
+            self.layers.update_layer_col()
+            self.clicked_layer = list()
 
     def mouse_actions(self, event, mouse_pressed):
         if mouse_pressed[2]:
@@ -137,7 +153,10 @@ class NNVizBuild:
             return
         for neuron in filter(lambda _neuron: _neuron != closest_neuron[0], self.clicked_neuron):
             neuron.turn_off()
+        for layer in self.clicked_layer:
+            layer.turn_off()
 
+        self.clicked_layer = list()
         closest_neuron[0].turn_on()
         self.clicked_neuron.append(closest_neuron[0])
 
@@ -148,6 +167,10 @@ class NNVizBuild:
         for layer in filter(lambda _layer: _layer != closest_layer[0], self.clicked_layer):
             layer.turn_off()
             self.clicked_layer.remove(layer)
+        for neuron in self.clicked_neuron:
+            neuron.turn_off()
+
+        self.clicked_neuron = list()
         closest_layer[0].turn_on()
         self.clicked_layer.append(closest_layer[0])
 
