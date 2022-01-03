@@ -34,6 +34,7 @@ class NNVizBuild:
         self.to_build_layer = False
         self.num_layers = 2
         self.reset_counter = 0
+        self.clicked_layer = list()
         # self.build_connection = False
         # self.selected_neurons =
 
@@ -162,6 +163,9 @@ class NNVizBuild:
     def draw_border(self):
         pygame.draw.line(self.win, WHITE, (self.inner_width, 0), (self.inner_width, self.inner_height))
         pygame.draw.line(self.win, WHITE, (0, self.inner_height), (self.inner_width, self.inner_height))
+
+    def get_clicked_layer(self):
+        return list(filter(lambda _layer: _layer.clicked, self.layers.layers))
 
 
 if __name__ == '__main__':
