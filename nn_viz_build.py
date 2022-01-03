@@ -1,82 +1,15 @@
 import pygame
 
+from nn_objects import Layers, Buttons
+
 BLACK = (31, 29, 36)
+BLUE = (36, 64, 120)
 ORANGE = (255, 165, 0)
 PURPLE = (177, 156, 217)
 GREY = (128, 128, 128)
+LIGHT_GREY = (150, 150, 150)
 WHITE = (255, 255, 255)
 pygame.font.init()
-
-
-class Neuron:
-    def __init__(self, layer, neuron_num):
-        self.layer = layer
-        self.layer_num = layer.layer_num
-        self.neuron_num = neuron_num
-        self.col = self.layer.col
-        self.row = 0
-
-    def draw(self, win):
-        pygame.draw.line(win, ORANGE, (self.col - 10, self.row), (self.col + 10, self.row))
-
-
-class Layer:
-    def __init__(self, width, height, layer_num):
-        self.width = width
-        self.height = height
-        self.starting_row = 100
-        self.ending_row = self.height - 100
-        self.layer_num = layer_num
-        self.col = 0
-        self.neurons = list()
-
-    def draw(self, win):
-        pygame.draw.line(win, PURPLE, (self.col, 0), (self.col, self.height))
-        for neuron in self.neurons:
-            neuron.draw(win)
-
-    def add_neuron(self):
-        print('new neuron')
-        self.neurons.append(Neuron(self, len(self.neurons)))
-        self.update_neuron_row()
-
-    def update_neuron_row(self):
-        if not self.neurons:
-            return
-        elif len(self.neurons) == 1:
-            self.neurons[0].row = (self.ending_row + self.starting_row) / 2
-        else:
-            increment = (self.ending_row - self.starting_row) / (len(self.neurons) + 1)
-            for neuron_index, neuron in enumerate(self.neurons):
-                neuron.row = self.starting_row + (neuron_index + 1) * increment
-
-
-class Layers:
-    def __init__(self, width, height):
-        self.layers = list()
-        self.width = width
-        self.height = height
-        self.create_in_out_layer()
-
-    def draw(self, win):
-        for layer in self.layers:
-            layer.draw(win)
-
-    def add_layer(self):
-        layer_num = len(self.layers[0:-1]) + 1
-        self.layers = self.layers[0:-1] + [Layer(self.width, self.height, layer_num)] + [self.layers[-1]]
-        self.layers[-1].layer_num = len(self.layers)
-        self.update_layer_col()
-
-    def update_layer_col(self):
-        num_of_layers = len(self.layers)
-        col = self.width / (num_of_layers + 1)
-        for layer in self.layers:
-            layer.col = layer.layer_num * col
-
-    def create_in_out_layer(self):
-        self.layers = [Layer(self.width, self.height, 1), Layer(self.width, self.height, 2)]
-        self.update_layer_col()
 
 
 class NNVizBuild:
@@ -84,16 +17,19 @@ class NNVizBuild:
         self.nn = nn
         self.width = 1600
         self.height = 990
+        self.top_offset = 50
+        self.left_offset = 50
         self.inner_width = 1390
         self.inner_height = 870
         self.win = pygame.display.set_mode((self.width, self.height))
         self.inner_win = (self.inner_width, self.inner_height)
         self.run = True
 
-        self.layers = Layers(self.inner_width, self.inner_height)
+        self.layers = Layers(self.inner_width, self.inner_height, self.top_offset, self.left_offset)
+        self.buttons = Buttons(
+            self.win, (self.left_offset + self.inner_width + 10, self.top_offset), (140, self.inner_height)
+        )
 
-        # self.layer_pos = dict()  # column numbers
-        # self.neuron_pos = dict()  # column and row (col, row)
         self.to_build_neuron = False
         self.to_build_layer = False
         self.num_layers = 2
@@ -108,8 +44,8 @@ class NNVizBuild:
         self.win.fill(BLACK)
 
         while self.run:
+            self.mouse_movements()
             if self.reset_counter == 100:
-                self.win.fill(BLACK)
                 self.draw_board()
                 self.reset_counter = 0
                 pygame.display.update()
@@ -147,36 +83,63 @@ class NNVizBuild:
             self.reset_counter = 100
 
     def mouse_actions(self, event, mouse_pressed):
-
-        if self.to_build_neuron and mouse_pressed[0]:
-            self.to_build_neuron = False
-        elif self.any_activated_parameters and mouse_pressed[2]:
+        if mouse_pressed[2]:
             print('all reset')
             self.reset_parameters()
 
+        col, row = pygame.mouse.get_pos()
+        self.click_layer(col, row)
+        if self.to_build_neuron and mouse_pressed[0]:
+            self.to_build_neuron = False
+
+    def mouse_movements(self):
+        col, row = pygame.mouse.get_pos()
+        self.highlight_layer(col, row)
+
     def draw_board(self):
         self.draw_border()
+        self.draw_background()
+        self.draw_buttons()
         self.draw_layers()
-        self.draw_neurons()
 
     def draw_layers(self):
         self.layers.draw(self.win)
-        # self.layer_pos = dict()
-        # div_size = self.inner_width / (self.num_layers + 1)
-        # for col in range(1, self.num_layers + 1):
-        #     self.layer_pos[col] = col * div_size
-        #     self.draw_one_column(col)
+
+    def draw_background(self):
+        self.win.fill(BLACK)
+        pygame.draw.rect(
+            self.win, BLUE,
+            [self.left_offset, self.top_offset, self.inner_width, self.inner_height]
+        )
+
+    def draw_buttons(self):
+        self.buttons.draw()
 
     def draw_neurons(self):
         pass
 
     def build_neuron(self):
-        closest_col = self.get_closest_layer()
+        pass
 
     def build_layer(self):
         pass
 
     # ---------------------------------------- MISC functions ---------------------------------------------------------
+    def click_layer(self, col, row):
+        closest_layer = list(filter(lambda _layer: _layer.mouse_on_layer(col, row), self.layers.layers))
+        if not closest_layer:
+            return
+        closest_layer[0].on = True
+        closest_layer[0].clicked = True
+
+    def highlight_layer(self, col, row):
+        closest_layer = list(filter(lambda _layer: _layer.mouse_on_layer(col, row), self.layers.layers))
+        if closest_layer:
+            closest_layer[0].on = True
+        else:
+            for layer in filter(lambda _layer: _layer.on and not _layer.clicked, self.layers.layers):
+                self.reset_counter = 100
+                layer.on = False
 
     def build_param_on_off(self, param):
         if param == 'neuron':
@@ -187,6 +150,11 @@ class NNVizBuild:
     def reset_parameters(self):
         self.to_build_neuron = False
         self.to_build_layer = False
+        for layer in self.layers.layers:
+            layer.on = False
+            layer.clicked = False
+        # for neuron in self.neurons:
+        #     neuron.on = False
 
     def any_activated_parameters(self):
         return any([self.to_build_neuron, self.to_build_layer])
@@ -194,14 +162,6 @@ class NNVizBuild:
     def draw_border(self):
         pygame.draw.line(self.win, WHITE, (self.inner_width, 0), (self.inner_width, self.inner_height))
         pygame.draw.line(self.win, WHITE, (0, self.inner_height), (self.inner_width, self.inner_height))
-
-    def get_closest_layer(self):
-        col, _ = pygame.mouse.get_pos()
-        closest_col, _ = min(
-            [(layer_col, abs(col - layer_width)) for layer_col, layer_width in self.layer_pos.items()],
-            key=lambda x: x[1]
-        )
-        return closest_col
 
 
 if __name__ == '__main__':
